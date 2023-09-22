@@ -1,7 +1,8 @@
 const express = require('express')
-const session = require('express-session')
+// const session = require('express-session')
 const mongoose = require('mongoose')
 const app = express()
+const userRoute = require('./routes/users')
 const SECRET='notagoodsecret'
 
 mongoose.connect("mongodb://localhost:27017/PixelAuth")
@@ -10,7 +11,9 @@ mongoose.connect("mongodb://localhost:27017/PixelAuth")
 
 app.use(express.urlencoded({extended: true}))
 app.use(express.json())
-app.use(session({ secret: SECRET }))
+
+
+app.use('/api/users',userRoute)
 
 
 
