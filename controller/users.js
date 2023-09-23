@@ -2,7 +2,12 @@ const { Users } = require("../model/users");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Session } = require("../model/session");
+const { createSession } = require("../utils/utils");
 const SECRETKEY = "JWTSECRET";
+
+
+
+
 
 module.exports.Register = async (req, res) => {
   try {
@@ -11,24 +16,15 @@ module.exports.Register = async (req, res) => {
     if (!userExist) {
       const newUser = await new Users({ email, name, password });
       await newUser.save();
-      const sessionToken = jwt.sign(
-        { name: newUser.name, id: newUser._id, email: newUser.email },
-        SECRETKEY,
-        { expiresIn: "15m" }
-      );
-      const accessToken = jwt.sign(
-        { name: newUser.name, id: newUser._id, email: newUser.email },
-        SECRETKEY,
-        { expiresIn: "5m" }
-      );
+    const token = createSession(newUser)
       const newSession = await new Session({
         userId: newUser._id,
-        token: sessionToken,
+        token: token.sessionToken,
       });
       await newSession.save();
       res.json({
-        newUser: { ...newUser, password: "NoSecret" },
-        accessToken,
+        newUser:newUser._id,
+        accessToken:token.accessToken,
         refTokenId: newSession._id,
       });
     } else res.json("this email is already registered");
@@ -38,6 +34,10 @@ module.exports.Register = async (req, res) => {
   }
 };
 
+
+
+
+
 module.exports.Login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -45,24 +45,15 @@ module.exports.Login = async (req, res) => {
     if (userExist) {
       const validPassword = await bcrypt.compare(password, userExist.password);
       if (validPassword) {
-        const sessionToken = jwt.sign(
-          { name: userExist.name, id: userExist._id, email: userExist.email },
-          SECRETKEY,
-          { expiresIn: "15m" }
-        );
-        const accessToken = jwt.sign(
-          { name: userExist.name, id: userExist._id, email: userExist.email },
-          SECRETKEY,
-          { expiresIn: "5m" }
-        );
+        const token = createSession(userExist)
         const newSession = await new Session({
           userId: userExist._id,
-          token: sessionToken,
+          token: token.sessionToken,
         });
         await newSession.save();
         res.json({
           id: userExist._id,
-          token: accessToken,
+          token: token.accessToken,
           refTokenId: newSession._id,
         });
       } else res.json("wrong credentials");
@@ -72,13 +63,19 @@ module.exports.Login = async (req, res) => {
     console.log("this is error:", error);
   }
 };
+
+
+
+
+
 module.exports.Logout = async (req, res) => {
   const { id } = req.params;
-  const { refId } = req.body;
+  const { refid } = req.headers;
   try {
-    const findUser = await Users.findById(id);
-    if (!findUser) res.json("user not found");
-    const findSession = await Session.findByIdAndDelete(refId);
+    const findSession = await Session.findOne({_id:refid,userId:id});
+    if (!findSession) res.json("user not found");
+    const deleteSession = await Session.findByIdAndDelete(refid);
+    res.json("logged out")
   } catch (error) {
     res.json(error.message);
   }
@@ -87,7 +84,7 @@ module.exports.Logout = async (req, res) => {
 module.exports.Secret = async (req, res) => {
   const { id } = req.params;
   try {
-    res.json({ id: id, secret: "Boost is the secret of my energy" });
+    res.json({ id: id, secret: "This is a protected route" });
   } catch (error) {
     res.json(error.message);
     console.log("this is error:", error);
@@ -96,34 +93,35 @@ module.exports.Secret = async (req, res) => {
 
 module.exports.RefreshTokens = async (req, res) => {
   const { id } = req.params;
-  const { refId } = req.headers;
+  const { refid } = req.headers;
   try {
-    const findUser = await Users.findById(id);
-    if (!findUser) res.json("user not found");
-    const findSession = await Session.findById(refId);
-    if (!findSession) res.json("your session is over,need to login");
-    const verifySession = jwt.verify(
-      findSession.token,
-      SECRETKEY,
-      (err, decoded) => {
-        if (err) return false;
-        return decoded;
-      }
-    );
-    if (!verifySession) {
-      await Session.findByIdAndDelete(refId);
-      res.json("your session is over,need to login");
+    const findSession = await Session.findOne({ _id: refid, userId: id });
+    if (!findSession) {
+      res.json("your session is over,need to login -1");
     } else {
-      const accessToken = jwt.sign(
-        {
-          name: verifySession.name,
-          id: verifySession.id,
-          email: verifySession.email,
-        },
+      const verifySession = jwt.verify(
+        findSession.token,
         SECRETKEY,
-        { expiresIn: "5m" }
+        (err, decoded) => {
+          if (err) return false;
+          return decoded;
+        }
       );
-      res.json({ token: accessToken });
+      if (!verifySession) {
+        await Session.findByIdAndDelete(refid);
+        res.json("your session is over,need to login -2");
+      } else {
+        const accessToken = jwt.sign(
+          {
+            name: verifySession.name,
+            id: verifySession.id,
+            email: verifySession.email,
+          },
+          SECRETKEY,
+          { expiresIn: "5m" }
+        );
+        res.json({ token: accessToken });
+      }
     }
   } catch (error) {
     res.json(error.message);
