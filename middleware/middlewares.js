@@ -17,11 +17,11 @@ module.exports.isLoggedIn = async (req, res, next) => {
       if (decode.email === userExists.email) {
         next();
       } else {
-        res.json("your verification failed");
+        res.status(401).json("your verification failed");
       }
-    } else res.json(" you are not logged in ");
+    } else res.status(401).json(" you are not logged in ");
   } catch (error) {
-    res.json(error.message);
-    // console.log(error.message);
+    res.status(401).json(error.message);
+  
   }
 };

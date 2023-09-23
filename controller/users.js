@@ -21,15 +21,14 @@ module.exports.Register = async (req, res) => {
         token: token.sessionToken,
       });
       await newSession.save();
-      res.json({
+      res.status(201).json({
         newUser:newUser._id,
         accessToken:token.accessToken,
         refTokenId: newSession._id,
       });
-    } else res.json("this email is already registered");
+    } else res.status(401).json("this email is already registered");
   } catch (error) {
-    res.json(error.message);
-    console.log("this is error:", error);
+    res.status(404).json(error.message);
   }
 };
 
@@ -50,16 +49,15 @@ module.exports.Login = async (req, res) => {
           token: token.sessionToken,
         });
         await newSession.save();
-        res.json({
+        res.status(201).json({
           id: userExist._id,
           token: token.accessToken,
           refTokenId: newSession._id,
         });
-      } else res.json("wrong credentials");
-    } else res.json("wrong credentials");
+      } else res.status(401).json("wrong credentials");
+    } else res.status(401).json("wrong credentials");
   } catch (error) {
-    res.json(error.message);
-    console.log("this is error:", error);
+    res.status(401).json(error.message);
   }
 };
 
@@ -74,19 +72,18 @@ module.exports.Logout = async (req, res) => {
     const findSession = await Session.findOne({_id:refid,userId:id});
     if (!findSession) res.json("user not found");
     const deleteSession = await Session.findByIdAndDelete(refid);
-    res.json("logged out")
+    res.status(201).json("logged out")
   } catch (error) {
-    res.json(error.message);
+    res.status(401).json(error.message);
   }
 };
 
 module.exports.Secret = async (req, res) => {
   const { id } = req.params;
   try {
-    res.json({ id: id, secret: "This is a protected route" });
+    res.status(201).json({ id: id, secret: "This is a protected route" });
   } catch (error) {
-    res.json(error.message);
-    console.log("this is error:", error);
+    res.status(401).json(error.message);
   }
 };
 
@@ -96,7 +93,7 @@ module.exports.RefreshTokens = async (req, res) => {
   try {
     const findSession = await Session.findOne({ _id: refid, userId: id });
     if (!findSession) {
-      res.json("your session is over,need to login -1");
+      res.status(401).json("your session is over,need to login");
     } else {
       const verifySession = jwt.verify(
         findSession.token,
@@ -108,7 +105,7 @@ module.exports.RefreshTokens = async (req, res) => {
       );
       if (!verifySession) {
         await Session.findByIdAndDelete(refid);
-        res.json("your session is over,need to login -2");
+        res.status(401).json("your session is over,need to login");
       } else {
         const accessToken = jwt.sign(
           {
@@ -119,10 +116,10 @@ module.exports.RefreshTokens = async (req, res) => {
           process.env.JWTSECRET,
           { expiresIn: "5m" }
         );
-        res.json({ token: accessToken });
+        res.status(201).json({ token: accessToken });
       }
     }
   } catch (error) {
-    res.json(error.message);
+    res.status(401).json(error.message);
   }
 };
