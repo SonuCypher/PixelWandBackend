@@ -1,11 +1,10 @@
+require('dotenv').config()
 const express = require('express')
-// const session = require('express-session')
 const mongoose = require('mongoose')
 const app = express()
 const userRoute = require('./routes/users')
-const SECRET='notagoodsecret'
 
-mongoose.connect("mongodb://localhost:27017/PixelAuth")
+mongoose.connect(process.env.MONGODB_CONNECTION)
 .then(()=>{console.log('database connected')})
 .catch((err)=>{console.log(err.message)})
 

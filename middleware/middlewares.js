@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 const { Users } = require("../model/users");
-const SECRETKEY = "JWTSECRET";
+
 
 
 
@@ -10,7 +10,7 @@ module.exports.isLoggedIn = async (req, res, next) => {
   try {
     const userExists = await Users.findOne({_id:id});
     if (token && userExists) {
-      const decode = jwt.verify(token, SECRETKEY,(err, decoded) => {
+      const decode = jwt.verify(token, process.env.JWTSECRET,(err, decoded) => {
         if (err) return false;
         return decoded;
       });

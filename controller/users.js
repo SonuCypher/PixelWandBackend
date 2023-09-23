@@ -3,7 +3,6 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Session } = require("../model/session");
 const { createSession } = require("../utils/utils");
-const SECRETKEY = "JWTSECRET";
 
 
 
@@ -101,7 +100,7 @@ module.exports.RefreshTokens = async (req, res) => {
     } else {
       const verifySession = jwt.verify(
         findSession.token,
-        SECRETKEY,
+        process.env.JWTSECRET,
         (err, decoded) => {
           if (err) return false;
           return decoded;
@@ -117,7 +116,7 @@ module.exports.RefreshTokens = async (req, res) => {
             id: verifySession.id,
             email: verifySession.email,
           },
-          SECRETKEY,
+          process.env.JWTSECRET,
           { expiresIn: "5m" }
         );
         res.json({ token: accessToken });
